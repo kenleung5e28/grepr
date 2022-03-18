@@ -1,5 +1,6 @@
 use clap::{App, Arg};
 use regex::{Regex, RegexBuilder};
+use walkdir::WalkDir;
 use std::{error::Error, fs};
 
 type MyResult<T> = Result<T, Box<dyn Error>>;
@@ -63,7 +64,8 @@ pub fn get_args() -> MyResult<Config> {
             .case_insensitive(matches.is_present("insensitive")).build()?,
         files: matches.values_of_lossy("files").unwrap()
             .into_iter()
-            .flat_map(|s| fs::read_dir(s)
+            .flat_map(|s| WalkDir::new(s)
+                .into_iter()
                 .filter_map(|entry| entry.ok())
                 .map(|entry| String::from(entry.path().to_string_lossy()))
             ).collect(),
