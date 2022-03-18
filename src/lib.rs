@@ -59,9 +59,14 @@ pub fn get_args() -> MyResult<Config> {
         )
         .get_matches();
 
+    let pattern = matches.value_of("pattern").unwrap();
     Ok(Config {
-        pattern: RegexBuilder::new(matches.value_of("pattern").unwrap())
-            .case_insensitive(matches.is_present("insensitive")).build()?,
+        pattern: RegexBuilder::new(pattern)
+            .case_insensitive(matches.is_present("insensitive"))
+            .build()
+            .map_err(|_| -> Box<dyn Error> {
+                From::from(format!("Invalid pattern \"{}\"", pattern))
+            })?,
         files: matches.values_of_lossy("files").unwrap()
             .into_iter()
             .flat_map(|s| WalkDir::new(s)
