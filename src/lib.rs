@@ -74,13 +74,7 @@ pub fn get_args() -> MyResult<Config> {
             .map_err(|_| -> Box<dyn Error> {
                 From::from(format!("Invalid pattern \"{}\"", pattern))
             })?,
-        files: matches.values_of_lossy("files").unwrap()
-            .into_iter()
-            .flat_map(|s| WalkDir::new(s)
-                .into_iter()
-                .filter_map(|entry| entry.ok())
-                .map(|entry| String::from(entry.path().to_string_lossy()))
-            ).collect(),
+        files: matches.values_of_lossy("files").unwrap(),
         recursive: matches.is_present("recursive"),
         count: matches.is_present("count"),
         invert_match: matches.is_present("invert_match"),
@@ -88,29 +82,41 @@ pub fn get_args() -> MyResult<Config> {
 }
 
 pub fn run(config: Config) -> MyResult<()> {
-    println!("{:#?}", config);
+    println!("pattern \"{}\"", config.pattern);
+    let entries = find_files(&config.files, config.recursive);
+    for entry in entries {
+        match entry {
+            Err(e) => eprintln!("{}", e),
+            Ok(filename) => println!("file \"{}\"", filename),
+        }
+    }
     Ok(())
 }
 
 fn find_files(paths: &[String], recursive: bool) -> Vec<MyResult<String>> {
     if recursive {
         paths.iter()
-            .flat_map(|path| WalkDir::new(path)
-                .into_iter()
-                .filter_map(|entry| entry
-                    .map_err(|e| From::from(e))
-                    .map(|entry| if entry.file_type().is_dir() {
-                        None
-                    } else {
-                        Some(String::from(entry.path().to_string_lossy()))
-                    })
-                    .transpose()
-                )
+            .flat_map(|path| if path.as_str() == "-" {
+                    vec![Ok("-".to_string())]
+                } else {
+                    WalkDir::new(path)
+                        .into_iter()
+                        .filter_map(|entry| entry
+                            .map_err(|e| From::from(e))
+                            .map(|entry| if entry.file_type().is_dir() {
+                                None
+                            } else {
+                                Some(String::from(entry.path().to_string_lossy()))
+                            })
+                            .transpose()
+                        )
+                        .collect()
+                }
             )
             .collect()
     } else {
         paths.iter()
-            .map(|path| if fs::metadata(path)?.is_dir() {
+            .map(|path| if path.as_str() != "-" && fs::metadata(path)?.is_dir() {
                 Err(From::from(format!("{} is a directory", path)))
             } else {
                 Ok(path.to_owned())
@@ -126,6 +132,11 @@ mod tests {
 
     #[test]
     fn test_find_files() {
+        // Verify that the function treats dash as a file
+        let files = find_files(&["-".to_string()], false);
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].as_ref().unwrap(), "-");
+
         // Verify that the function finds a file known to exist
         let files = find_files(&["./tests/inputs/fox.txt".to_string()], false);
         assert_eq!(files.len(), 1);
