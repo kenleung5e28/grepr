@@ -140,7 +140,6 @@ fn find_lines<T: BufRead>(mut file: T, pattern: &Regex, invert_match: bool) -> M
 #[cfg(test)]
 mod tests {
     use super::{find_files, find_lines};
-    use assert_cmd::prelude::OutputOkExt;
     use rand::{distributions::Alphanumeric, Rng};
     use regex::{Regex, RegexBuilder};
     use std::io::Cursor;
