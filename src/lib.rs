@@ -1,7 +1,10 @@
 use clap::{App, Arg};
 use regex::{Regex, RegexBuilder};
 use walkdir::WalkDir;
-use std::error::Error;
+use std::{
+    error::Error,
+    fs,
+};
 
 type MyResult<T> = Result<T, Box<dyn Error>>;
 
@@ -90,7 +93,30 @@ pub fn run(config: Config) -> MyResult<()> {
 }
 
 fn find_files(paths: &[String], recursive: bool) -> Vec<MyResult<String>> {
-    unimplemented!();
+    if recursive {
+        paths.iter()
+            .flat_map(|path| WalkDir::new(path)
+                .into_iter()
+                .filter_map(|entry| entry
+                    .map_err(|e| From::from(e))
+                    .map(|entry| if entry.file_type().is_dir() {
+                        None
+                    } else {
+                        Some(String::from(entry.path().to_string_lossy()))
+                    })
+                    .transpose()
+                )
+            )
+            .collect()
+    } else {
+        paths.iter()
+            .map(|path| if fs::metadata(path)?.is_dir() {
+                Err(From::from(format!("{} is a directory", path)))
+            } else {
+                Ok(path.to_owned())
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -120,6 +146,21 @@ mod tests {
         files.sort();
         assert_eq!(files.len(), 4);
         assert_eq!(files, vec![
+            "./tests/inputs/bustle.txt",
+            "./tests/inputs/empty.txt",
+            "./tests/inputs/fox.txt",
+            "./tests/inputs/nobody.txt",
+        ]);
+
+        // Verify the function finds the file and recurses to find four files in the directory
+        let res = find_files(&["./tests/cli.rs".to_string(), "./tests/inputs".to_string()], true);
+        let mut files: Vec<String> = res.iter()
+            .map(|r| r.as_ref().unwrap().replace("\\", "/"))
+            .collect();
+        files.sort();
+        assert_eq!(files.len(), 5);
+        assert_eq!(files, vec![
+            "./tests/cli.rs",
             "./tests/inputs/bustle.txt",
             "./tests/inputs/empty.txt",
             "./tests/inputs/fox.txt",
