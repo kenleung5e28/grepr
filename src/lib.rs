@@ -5,6 +5,7 @@ use std::{
     error::Error,
     fs::{self, File},
     io::{self, BufRead, BufReader},
+    mem,
 };
 
 type MyResult<T> = Result<T, Box<dyn Error>>;
@@ -178,7 +179,7 @@ fn find_lines<T: BufRead>(mut file: T, pattern: &Regex, invert_match: bool) -> M
             break;
         }
         if pattern.is_match(&buf) == !invert_match {
-            lines.push(buf.clone());
+            lines.push(mem::take(&mut buf));
         }
         buf.clear();
     }
