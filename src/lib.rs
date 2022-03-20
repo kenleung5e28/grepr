@@ -134,7 +134,19 @@ fn find_files(paths: &[String], recursive: bool) -> Vec<MyResult<String>> {
 }
 
 fn find_lines<T: BufRead>(mut file: T, pattern: &Regex, invert_match: bool) -> MyResult<Vec<String>> {
-    unimplemented!();
+    let lines = vec![];
+    let mut buf = String::new();
+    loop {
+        let bytes_read = file.read_line(&mut buf)?;
+        if bytes_read == 0 {
+            break;
+        }
+        if pattern.is_match(&buf) == !invert_match {
+            lines.push(buf.clone());
+        }
+        buf.clear();
+    }
+    Ok(lines)
 }
 
 #[cfg(test)]
