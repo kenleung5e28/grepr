@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_find_lines() {
-        let text = b"Lorem\nIpsum\n\r\nDOLOR";
+        let text = b"Lorem\nIpsum\r\nDOLOR";
 
         // The pattern _or_ should match the one line "Lorem"
         let re1 = Regex::new("or").unwrap();
