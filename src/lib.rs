@@ -105,15 +105,14 @@ pub fn run(config: Config) -> MyResult<()> {
                         if is_single_file || filename.as_str() == "-" {
                             println!("{}", matches.len());
                         } else {
-                            println!("{}: {}", filename, matches.len());
+                            println!("{}:{}", filename, matches.len());
                         }
                     } else {
                         for s in matches {
-                            let s = s.trim();
                             if is_single_file || filename.as_str() == "-" {
-                                println!("{}", s);
+                                print!("{}", s);
                             } else {
-                                println!("{}: {}", filename, s);
+                                print!("{}:{}", filename, s);
                             }
                         }
                     }
@@ -140,7 +139,7 @@ fn find_files(paths: &[String], recursive: bool) -> Vec<MyResult<String>> {
                     WalkDir::new(path)
                         .into_iter()
                         .filter_map(|entry| entry
-                            .map_err(|e| From::from(e))
+                            .map_err(|e| From::from(format!("{}", e)))
                             .map(|entry| if entry.file_type().is_dir() {
                                 None
                             } else {
@@ -154,10 +153,18 @@ fn find_files(paths: &[String], recursive: bool) -> Vec<MyResult<String>> {
             .collect()
     } else {
         paths.iter()
-            .map(|path| if path.as_str() != "-" && fs::metadata(path)?.is_dir() {
-                Err(From::from(format!("{} is a directory", path)))
-            } else {
-                Ok(path.to_owned())
+            .map(|path| if path.as_str() == "-" {
+                Ok("-".to_string())
+            } else { 
+                let metadata = fs::metadata(path)
+                    .map_err(|e| -> Box<dyn Error> { 
+                        From::from(format!("{}: {}", path, e))
+                    })?;
+                if metadata.is_dir() {
+                    Err(From::from(format!("{} is a directory", path)))
+                } else {
+                    Ok(path.to_owned())
+                }
             })
             .collect()
     }
